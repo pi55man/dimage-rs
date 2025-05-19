@@ -38,23 +38,20 @@ fn main() {
 }
 
 fn generate_dockerfile(name: &String, args: Args) -> String {
-        let mut content = String::from("");
+    let mut content = String::from("");
+    content.push_str("FROM rust:latest AS builder\n");
+    content.push_str("WORKDIR /app\n");
+    content.push_str("COPY . .\n");
+    content.push_str("RUN rustup target add x86_64-unknown-linux-musl\n");
+    content.push_str("RUN cargo build --release --target x86_64-unknown-linux-musl\n");
+    content.push_str("FROM alpine:latest\n");
+    content.push_str("RUN apk add --no-cache ca-certificates\n");
 
+    if let Some(port) = args.port {
+        content.push_str(format!("EXPOSE {}\n", port).as_str());
+    }
 
-        content.push_str("FROM rust:latest AS builder\n");
-
-
-        content.push_str("WORKDIR /app\n");
-        content.push_str("COPY . .\n");
-        content.push_str("RUN rustup target add x86_64-unknown-linux-musl\n");
-        content.push_str("RUN cargo build --release --target x86_64-unknown-linux-musl\n");
-        content.push_str("FROM alpine:latest\n");
-        content.push_str("RUN apk add --no-cache ca-certificates\n");
-        if let Some(port) = args.port {
-            content.push_str(format!("EXPOSE {}\n", port).as_str());
-        }
-        content.push_str(format!("COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/{} usr/local/bin/app\n",name).as_str());
-        content.push_str(r#"CMD ["app"]"#);
-        content
+    content.push_str(format!("COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/{} usr/local/bin/app\n",name).as_str());
+    content.push_str(r#"CMD ["app"]"#);
+    content
 }
-
